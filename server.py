@@ -3,7 +3,6 @@ from time import gmtime, strftime
 import os
 from BTOClient.BTO import BTO_Server, BTORequestHandler
 
-
 class LhRequestHandler(StreamRequestHandler, BTORequestHandler):
     
     def __init__(self, request, client_address, server, legal_options,
@@ -30,13 +29,13 @@ class LhServer(ForkingTCPServer, BTO_Server):
                 self.users,self.req_id,self.bto_dir,self.bto_blas)
 
 
-HOST = 'localhost'
+HOST = '0.0.0.0'
 PORT = 9999
 
 # Directory containing the ./bin dir holding bto compiler executable
 # on the server machine.
 #BTOdir = '/home/cookjj/btoblas/'
-BTOdir = '/home/lighthouse/btoblas/'
+BTOdir = '/home/Documents/adserver/'
 
 # Allowed Users
 USER = ['lighthouse', 'salin']

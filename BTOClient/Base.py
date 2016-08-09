@@ -11,11 +11,12 @@ class BaseMessage:
 # output : whatever has been received instead of receipt (e.g. error msg) 
 # return : int 1 if receipt is received ("ok"), int 0 otherwise 
     def recv_receipt(self):
+        print "receiving receipt"
         try:
             r = self.rfile.readline()
         except:
             return 0
-        if r=="ok\n":     
+        if r=="receipt sent\n":     
             return 1
         else:
             print r
@@ -28,7 +29,7 @@ class BaseMessage:
 # return : -
     def send_receipt(self):
         try:
-            self.wfile.write("ok\n")
+            self.wfile.write("receipt sent\n")
         except IOError:
             print "can't send receipt"
 ###########################################################################
@@ -50,6 +51,7 @@ class BaseMessage:
 # output : -
 # return : -
     def send_header(self,h_list):
+        print "sending message header"
         for h in h_list:
             self.send_header1(h)
 ###########################################################################
@@ -59,9 +61,10 @@ class BaseMessage:
 # output : -
 # return : -
     def send_header1(self,h):
+        print "sending header"
         self.wfile.write(str(h)+"\n")
         if not self.recv_receipt():
-        #    print "error while sending header"
+            print "error while sending header"
             raise IOError
 ###########################################################################
 # name   : recv_header1
@@ -70,20 +73,20 @@ class BaseMessage:
 # output : -
 # return : string
     def recv_header1(self):
+        print "receiving header"
         try:
             header = string.strip(self.rfile.readline())
-            print rfile
+            print header
             # raise exception if string is empty:
             if header=="":
-                self.send_error("empty header. ")
+                self.send_error("empty header")
                 raise IOError
             else:
                 self.send_receipt()
                 return header
         except:
-            print "attempting to receive header."
-         #   self.send_error("error while receiving header. ")
-         #   raise IOError
+            self.send_error("error while receiving header")
+            raise IOError
 ###########################################################################
 # name   : send1
 # purpose: send 1 file
@@ -91,10 +94,11 @@ class BaseMessage:
 # output : -
 # return : -
     def send1(self,filename,data):
+        print "sending one file"
         self.wfile.write(filename+" "+str(len(data))+"\n")
         self.wfile.write(data)
         if not self.recv_receipt():
-         #   print "error while sending file",filename
+            print "error while sending file",filename
             raise IOError
 ###########################################################################
 # name   : recv1
@@ -105,13 +109,14 @@ class BaseMessage:
     def recv1(self):
         try:
             [filename,filesize] = string.split(self.rfile.readline())
+            print "receiving file " + filename
             filesize = int(filesize)
             data = self.rfile.read(filesize)
         except ValueError, IOError:
-            self.send_error("error while reading file info. ")
+            self.send_error("error while reading file info")
             raise IOError
         except:
-            self.send_error("error while receiving data. ")
+            self.send_error("error while receiving data")
             raise IOError
         else:
             self.send_receipt()
@@ -123,6 +128,7 @@ class BaseMessage:
 # output : -
 # return : string data
     def read1(self,filename):
+        print "reading from disk"
         d=open(filename,'r')
         data=d.read()
         d.close()
@@ -134,6 +140,7 @@ class BaseMessage:
 # output : file is written to disk
 # return : -
     def write1(self,filename,data):
+        print "writing to disk"
         path,base = os.path.split(filename)
         if path and not os.path.exists(path):
             os.makedirs(path)
@@ -147,6 +154,7 @@ class BaseMessage:
 # output : -
 # return : -
     def send_files(self,list_of_files):
+        print "sending files"
         for filename in list_of_files:
             try:
                 data = self.read1(filename)
@@ -162,6 +170,7 @@ class BaseMessage:
 # output : received files are written to disk
 # return : [string filenames]
     def recv_files(self,N):
+        print "receiving files"
         r_list = []
         for i in range(N):
             try:
@@ -184,13 +193,14 @@ class BaseServer(BaseMessage):
 # output : - 
 # return : string userid
     def check_user(self,userid):
+        print "checking user id"
         if not (userid in self.users):
 # would be useful to let the user know that the userid is rejected.
 # The server could send an error message instead of the "ok" receipt
 # after receiving the first header line:
 #            self.send_error(userid+" unknown user")
 # currently it's only written to the server's log:
-            print (userid+" unknown user")
+            print ("unknown user")
             raise BaseException
         else:
             return userid
@@ -214,46 +224,6 @@ class BaseServer(BaseMessage):
         for o,a in optlist:
             options.append(string.strip(o+" "+a))
         return string.join(options+files)
-###########################################################################
-# name   : do_all
-# purpose: general routine to handle one request
-# args   : string executable, string request_id
-# output : -
-# return : -
-    def do_all(self,exe):
-        userid  = self.check_user(self.recv_header1())
-        options = self.check_options(self.recv_header1())
-        nfiles  = int(self.recv_header1())
-        workdir = userid+"_"+self.req_id
-        change_workdir(workdir)
-        files = self.recv_files(nfiles)
-        new_files = self.run_executable(exe+" "+options)
-        self.send_header1(len(new_files))
-        self.send_files(new_files)
-        remove_workdir(workdir)
-        
-###########################################################################
-# name   : run_executable
-# purpose: execute command in subshell
-# args   : string commandline
-# output : current directory and command to be executed, stdout/stderr log files
-# return : [new_files]       
-    def run_executable(self,cmdline):
-        oldfiles = r_listdir(".")
-        out_log = file('stdout.log', 'w')
-	err_log = file('stderr.log', 'w')
-	print "["+str(os.getcwd())+"] "+cmdline
-	child_stdin, child_stdout, child_stderr = os.popen3(cmdline)
-	out_log.write(child_stdout.read())
-	err_log.write(child_stdout.read())
-	out_log.close()
-	err_log.close()
-	# which files are new?
-	time.sleep(1)   #sometimes there are still nfs handles -> wait a second
-	newfiles = r_listdir(".")
-	return filter(lambda x: x not in oldfiles, newfiles)
-
-###########################################################################
         
 class BaseClient(BaseMessage):
     """Base class for AD-clients"""
@@ -264,11 +234,13 @@ class BaseClient(BaseMessage):
 # output : - 
 # return : -       
     def init_socket(self,host,port):
+        print "connecting to " + host
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             if s.connect_ex((host, port))==0:
-                self.rfile = s.makefile('rb', -1)
-                self.wfile = s.makefile('wb', 0)
+                print "port " + port + " open"
+                self.rfile = s.makefile('rwb', -1)
+                self.wfile = s.makefile('rwb', 0)
                 s.close()
             else:
                 raise socket.error
@@ -282,23 +254,24 @@ class BaseClient(BaseMessage):
 # args   : string host, int port, string user, string options, [filenames]
 # output : received files are saved to disk
 # return : [filenames]
-    def submit_request(self,host,port,user,options,files):
+    def submit_request(self,host,port,user,options,files,header):
         try:
             self.init_socket(host,port)
-            self.send_header([user,options,len(files)])
+            #self.send_header([user,options,len(files)])
+            self.send_header(header)
+            self.rfile.write(header)
+            print "self.rfile.read() " + self.rfile.read()
             self.send_files(files)
         except:
-            print "request submitted."
-        #    print "error while submitting request"
-        #    sys.exit(1)
+            print "error while submitting request"
+            sys.exit(1)
         # receive response
         try:
-            nfiles = int(self.recv_header1())           # header (number of files)
-            list_of_files = self.recv_files(nfiles)     # list of received files
+            nfiles = len(files)       
+            list_of_files = files     # list of received files
         except:
-            print "attempting to collect results."
-        #    print "error while collecting results"
-        #    sys.exit(1)
+            print "error while collecting results"
+            sys.exit(1)
         else:
             return list_of_files
 ########################################################################
