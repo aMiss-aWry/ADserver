@@ -65,7 +65,7 @@ class BaseMessage:
         self.wfile.write(str(h)+"\n")
         if not self.recv_receipt():
             print "error while sending header"
-            raise IOError
+           # raise IOError
 ###########################################################################
 # name   : recv_header1
 # purpose: receive one line
@@ -86,7 +86,7 @@ class BaseMessage:
                 return header
         except:
             self.send_error("error while receiving header")
-            raise IOError
+           # raise IOError
 ###########################################################################
 # name   : send1
 # purpose: send 1 file
