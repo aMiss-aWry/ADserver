@@ -30,7 +30,7 @@ int main(int argc, char **argv)
         while ((c = getc(file)) != EOF)
             fputc(c, output);
         fprintf(output, "\n}");
-        fprintf(stdout, "Success on running ./test, input.ad.c generated.\n");
+        fprintf(stdout, "Success on running ./test, .ad.c file generated.\n");
     } else {
         printf("File does not exist.\n");
         return 0;
